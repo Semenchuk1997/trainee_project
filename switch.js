@@ -14,47 +14,66 @@ const Device = mongoose.model('Devices', new mongoose.Schema({
 }));
 
 (async () => {
-    await Device.find().remove();
+    try{
+        await Device.find().remove();
+    } catch(error) {
+        console.log('Error: ' + error.message);
+    }
 })();
 
 io.on('connection', socket => {
     socket.on('init', async data => {
         data = JSON.parse(data);
 
-        const device = await Device({
-            id: data.deviceId + data.controllerId + data.switchSocketId,
-            deviceId: data.deviceId,
-            switchSocketId: data.switchSocketId,
-            controllerId: data.controllerId,
-            destination: data.destination
-        });
-        await device.save();
+        try {
+            const device = await Device({
+                id: data.deviceId + data.controllerId + data.switchSocketId,
+                deviceId: data.deviceId,
+                switchSocketId: data.switchSocketId,
+                controllerId: data.controllerId,
+                destination: data.destination
+            });
+            await device.save();
 
-        const deviceDest = await Device.findOne({id: data.destination});
+            //console.log('allow device: ' + await Device.find().select({id: 1}));
 
-        if(!deviceDest) {
-            return io.to(socket.id).emit('feedback', JSON.stringify({message: 'Device with given ID is not found.'}));
-        } else {
-            io.to(socket.id).emit('feedback', JSON.stringify({message: `Connected to device: ${data.destination}`}));
-            io.to(socket.id).emit('ok', JSON.stringify({id: deviceDest.id}));
+            const deviceDest = await Device.findOne({id: data.destination});
+
+            if(!deviceDest) {
+                return io.to(socket.id).emit('feedback', JSON.stringify({message: 'Device with given ID is not found.'}));
+            } else {
+                io.to(socket.id).emit('feedback', JSON.stringify({message: `Connected to device: ${data.destination}`}));
+                io.to(socket.id).emit('ok', JSON.stringify(data));
+            }
+        } catch(error) {
+            console.log('Error: ' + error.message);
         }
     });
 
-    socket.on('send', data => {
-        data = Object.assign({}, JSON.parse(data));
-        const address = data.id.slice(-20);
-
-        io.to(address).emit('receive', JSON.stringify({
-            from: address,
-            message: data.message
-        }));
-    });
-
     socket.on('message', message => {
-        console.log(JSON.parse(message).message);
+        message = JSON.parse(message);
+        console.log(message.message);
     });
+
+    socket.on('send', data => {
+        io.to(data.destination.slice(-20)).emit('receive', JSON.stringify(data));
+    });
+
+    socket.on('to switch', data => {
+        data = JSON.parse(data);
+
+        io.to(data.to).emit('to client', JSON.stringify(data));
+    });
+
+    // socket.on('test', test => {
+    //     console.log(test)
+    // });
 
     socket.on('disconnect', async () => {
-        await Device.find({controllerId: socket.io}).remove();
+        try {
+            await Device.find({controllerId: socket.io}).remove();
+        } catch(error) {
+            console.log('Error: ' + error.message);
+        }
     });
 });
