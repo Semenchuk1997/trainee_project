@@ -22,6 +22,7 @@ const Device = mongoose.model('Devices', new mongoose.Schema({
 })();
 
 io.on('connection', socket => {
+    //3. get data and register on switch
     socket.on('init', async data => {
         data = JSON.parse(data);
 
@@ -35,21 +36,21 @@ io.on('connection', socket => {
             });
             await device.save();
 
-            let list = await Device.find().select({id: 1});
+            //4. show available id addresses in terminal
             let arr = [];
-            list.map(elem => {
+            await Device.find().select({id: 1}).map(elem => {
                 arr.push(elem.id);
             });
-
             console.log('Available addresses: ' + arr);
 
+            // 5. Check if device with ID is exist
             const deviceDest = await Device.findOne({id: data.destination});
 
             if(!deviceDest) {
                 return io.to(socket.id).emit('feedback', JSON.stringify({message: 'Device with given ID is not found.'}));
             } else {
                 io.to(socket.id).emit('feedback', JSON.stringify({message: `Connected to device: ${data.destination}`}));
-                io.to(socket.id).emit('ok', JSON.stringify(data));
+                io.to(socket.id).emit('ok', JSON.stringify(data)); //6. feedback to controller: "everything good, can send message"
             }
         } catch(error) {
             console.log('Error: ' + error.message);
@@ -61,14 +62,16 @@ io.on('connection', socket => {
         console.log(message.message);
     });
 
+    //9. get message from controller
     socket.on('send', data => {
         data = JSON.parse(data);
-        io.to(data.destination.slice(-20)).emit('receive', JSON.stringify(data));
+        io.to(data.destination.slice(-20)).emit('receive', JSON.stringify(data)); //10. move message to chosen device
     });
 
+    //14. get message from device
     socket.on('to switch', data => {
         data = JSON.parse(data);
-
+        // 15. move answer messege back to controller
         io.to(data.to).emit('to client', JSON.stringify(data));
     });
 
