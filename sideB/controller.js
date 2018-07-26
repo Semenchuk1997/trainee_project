@@ -23,11 +23,13 @@ socketSwitch.on('to client', data => {
     data = JSON.parse(data);
     console.log(data.message);
 
-    socketSwitch.emit('to switch', JSON.stringify({
-        to: data.from,
-        from: id.controllerId,
-        message: 'Hello from controller'
-    }));
+    setTimeout(() => {
+        socketSwitch.emit('to switch', JSON.stringify({
+            to: data.from,
+            from: id.controllerId,
+            message: 'Hello from controller'
+        }));
+    }, 3000);
 });
 
 io.on('connection', socket => {
@@ -38,8 +40,8 @@ io.on('connection', socket => {
     });
 
     socketSwitch.on('ok', data => {
-        data = JSON.parse(data);
-        socketSwitch.emit('send', Object.assign(data, {message: 'Hello from controller'}));
+        const result = Object.assign(JSON.parse(data), {message: 'Hello from controller'});
+        socketSwitch.emit('send', JSON.stringify(result));
     });
 
     socket.on('show', message => {

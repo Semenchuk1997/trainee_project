@@ -35,7 +35,13 @@ io.on('connection', socket => {
             });
             await device.save();
 
-            //console.log('allow device: ' + await Device.find().select({id: 1}));
+            let list = await Device.find().select({id: 1});
+            let arr = [];
+            list.map(elem => {
+                arr.push(elem.id);
+            });
+
+            console.log('Available addresses: ' + arr);
 
             const deviceDest = await Device.findOne({id: data.destination});
 
@@ -56,6 +62,7 @@ io.on('connection', socket => {
     });
 
     socket.on('send', data => {
+        data = JSON.parse(data);
         io.to(data.destination.slice(-20)).emit('receive', JSON.stringify(data));
     });
 
@@ -65,13 +72,11 @@ io.on('connection', socket => {
         io.to(data.to).emit('to client', JSON.stringify(data));
     });
 
-    // socket.on('test', test => {
-    //     console.log(test)
-    // });
-
     socket.on('disconnect', async () => {
         try {
-            await Device.find({controllerId: socket.io}).remove();
+            await Device.find()
+                .or([{controllerId: socket.io}, {switchSocketId: socket.id}])
+                .remove();
         } catch(error) {
             console.log('Error: ' + error.message);
         }
