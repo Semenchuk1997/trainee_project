@@ -37,17 +37,7 @@ io.on('connection', socket => {
             await device.save();
 
             //4. show available id addresses in terminal
-            let list = await Device.find().select({id: 1}),
-                arr = [];
-
-            list.map(elem => {
-                arr.push(elem.id);
-            });
-
-            console.log('Available addresses: ');
-            arr.forEach(elem => {
-                console.log(elem);
-            });
+            showAvailable();
 
             // 5. Check if device with ID is exist
             const deviceDest = await Device.findOne({id: data.destination});
@@ -89,5 +79,17 @@ io.on('connection', socket => {
         } catch(error) {
             console.log('Error: ' + error.message);
         }
+
+        showAvailable();
     });
 });
+
+
+async function showAvailable(){
+    let list = await Device.find().select({id: 1})
+
+    console.log('Available addresses: ');
+    list.map(elem => {
+        console.log(elem.id);
+    });
+}
